@@ -25,7 +25,7 @@ use std::collections::HashMap;
 use std::env;
 
 struct Handler {
-    pool: SqlitePool 
+    pool: SqlitePool
 }
 
 #[async_trait]
@@ -47,6 +47,12 @@ impl EventHandler for Handler{
                 ),
                 "challenge" => {
                     Some(commands::challenge::run(&self.pool, &ctx, &command).await)
+                },
+                "archive" => {  // Add this case
+                    Some(commands::archive::run(&self.pool, &ctx, &command).await)
+                },
+                "export" => {
+                    Some(commands::export::run(&self.pool, &ctx, &command).await)
                 }
                 _ => Some("not implemented :(".to_string()),
             };
@@ -148,6 +154,8 @@ INSERT OR REPLACE INTO config (option, value) VALUES (?1, ?2)
                     commands::ping::register(),
                     commands::ctf::register(),
                     commands::challenge::register(),
+                    commands::archive::register(),
+                    commands::export::register(),
                 ],
             )
             .await;
@@ -206,8 +214,9 @@ async fn main() -> anyhow::Result<()> {
 
 
     let handler = Handler{pool};
+    let intents = GatewayIntents::MESSAGE_CONTENT;  // This is critical!
     // Build our client.
-    let mut client = Client::builder(token, GatewayIntents::empty())
+    let mut client = Client::builder(token, intents)
         .event_handler(handler)
         .await
         .expect("Error creating client");

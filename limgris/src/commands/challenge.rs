@@ -87,7 +87,7 @@ async fn handle_create(
                     chan.id,
                 )
                 .await;
-                format!("Created challenge channel {}", name).to_string()
+                format!("Created challenge channel <#{}>", chan.id).to_string()
             }
             Err(err) => {
                 println!("{:#?}", err);
@@ -123,18 +123,19 @@ async fn handle_done(
 
     match challenge_res.await {
         Ok(challenge) => {
-            if options.len() == 1 {
-                if let ResolvedValue::String(tcredit) = options[0].value {
-                    credit = format!(
-                        "Challenge `{}` completed by: <@{}> {}",
-                        &challenge.name, user_id, tcredit
-                    );
-                };
-            } else {
-                credit = format!("Challenge `{}` completed by: <@{}>", &challenge.name, user_id);
-            }
             println!("{:?}", challenge);
             if let Some(chall_chan) = challenge.channel_id() {
+                if options.len() == 1 {
+                    if let ResolvedValue::String(tcredit) = options[0].value {
+                        credit = format!(
+                            "Challenge <#{}> completed by: <@{}> {}",
+                            chall_chan.get(), user_id, tcredit
+                        );
+                    };
+                } else {
+                    credit = format!("Challenge <#{}> completed by: <@{}>", chall_chan.get(), user_id);
+                }
+
                 let completed_id = match ChannelId::from_str(
                     completed_cat.await.unwrap().value.unwrap().as_str(),
                 ) {
