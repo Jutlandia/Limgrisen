@@ -48,22 +48,13 @@ async fn handle_create(
     match guild_channel {
         Ok(chan) => {
             let _ctf = Ctf::create(pool, name.to_string(), chan.id).await;
-            format!("Created CTF channel {}", name).to_string()
+            format!("Created CTF channel <#{}>", chan.id).to_string()
         }
         Err(err) => {
             println!("{:#?}", err);
             "Error occured during creation of Channel, please check the logs for more details".to_string()
         }
     }
-}
-
-async fn handle_archive(
-    pool: &SqlitePool,
-    ctx: &Context,
-    guild_id: &Option<GuildId>,
-    sub_cmd: &ResolvedValue<'_>,
-) -> String {
-    "Archiving [NOT IMPLEMENTED]".to_string()
 }
 
 pub async fn run(
@@ -77,9 +68,7 @@ pub async fn run(
     match options[0].name {
         "create" => {
             handle_create(pool, &ctx, &guild_id, &options[0].value).await
-        }
-        "archive" => handle_archive(pool, &ctx, &guild_id, &options[0].value).await,
-        "export" => "Exporting [NOT IMPLEMENTED]".to_string(),
+        },
         _ => "Not implemented".to_string(),
     }
 }
@@ -99,20 +88,5 @@ pub fn register() -> CreateCommand {
                 "Name of CTF to be created",
             )
             .required(true)]),
-            CreateCommandOption::new(
-                CommandOptionType::SubCommand,
-                "archive",
-                "Used to archive a CTF",
-            )
-            .set_sub_options(vec![CreateCommandOption::new(
-                CommandOptionType::Channel,
-                "channel",
-                "Channel of the CTF to be archived",
-            )]),
-            CreateCommandOption::new(
-                CommandOptionType::SubCommand,
-                "export",
-                "Used to export a CTF",
-            ),
         ])
 }
