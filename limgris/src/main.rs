@@ -23,6 +23,7 @@ use sqlx::{
 
 use std::collections::HashMap;
 use std::env;
+use std::io::Read;
 
 struct Handler {
     pool: SqlitePool
@@ -161,7 +162,7 @@ INSERT OR REPLACE INTO config (option, value) VALUES (?1, ?2)
             .await;
 
         match commands {
-            Ok(result) => println!("Commands are now setup!"),
+            Ok(_) => println!("Commands are now setup!"),
             Err(err) => println!("Error: {:#?}", err),
         }
 
@@ -176,23 +177,31 @@ INSERT OR REPLACE INTO config (option, value) VALUES (?1, ?2)
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let token =
-        env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
+    let token = match env::var("DISCORD_TOKEN") {
+	Ok(t) => t,
+	Err(_) => {
+	    let token_filepath = env::var("DISCORD_TOKEN_FILE").expect("\"DISCORD_TOKEN\" or \"DISCORD_TOKEN\" needs to be set!");
+	    let mut token_file = std::fs::File::open(token_filepath)?;
+	    let mut content = String::new();
+	    token_file.read_to_string(&mut content)?;
+	    content
+	},
+    };
 
-    let DB_URL: String = env::var("DATABASE_URL")
+    let db_url: String = env::var("DATABASE_URL")
         .expect("Expected \"DATABASE_URL\" in environment");
 
 
-    if !Sqlite::database_exists(&DB_URL).await.unwrap_or(false){
-        println!("Creating dabate {}", DB_URL);
-        match Sqlite::create_database(&DB_URL).await {
+    if !Sqlite::database_exists(&db_url).await.unwrap_or(false){
+        println!("Creating dabate {}", db_url);
+        match Sqlite::create_database(&db_url).await {
             Ok(_) => println!("DB Created"),
             Err(error) => panic!("error: {}", error)
         }
     }
 
 
-    let pool = SqlitePool::connect(&DB_URL)
+    let pool = SqlitePool::connect(&db_url)
         .await
         .expect("Error connecting to database");
 
