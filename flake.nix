@@ -91,15 +91,30 @@
             discordGuildId = mkOption {
               type = types.str;
             };
-            discordToken = mkOption {
+            discordTokenFile = mkOption {
               type = types.str;
             };
             databaseUrl = mkOption {
               type = types.str;
+              default = "sqlite:///var/lib/limgris/ctfs.db";
             };
           };
 
+
           config = mkIf cfg.enable {
+            systemd.tmpfiles.settings."10-limgris" = {
+              "/var/lib/limgris" = {
+                d = {
+                  user = "limgris";
+                  mode = "0755";
+                };
+              };
+            };
+
+            user.users.limgris = {
+              isSystemUser = true;
+            };
+
             systemd.services.limgrisen = {
               description = "Jutlandia Limgrisen service";
               after = [
@@ -108,7 +123,7 @@
               wantedBy = [ "multi-user.target" ];
               environment = {
                 GUILD_ID = cfg.discordGuildId;
-                DISCORD_TOKEN = cfg.discordToken;
+                DISCORD_TOKEN_FILE = cfg.discordTokenFile;
                 DATABASE_URL = cfg.databaseUrl;
                 LIMGRIS_LIB_DIR = "${limgris}/lib";
               };
@@ -117,11 +132,12 @@
                 LimitNPROC = 512;
                 LimitNOFILE = 1048576;
                 NoNewPrivileges = true;
-                DynamicUser = true;
+                User = "limgris";
                 ExecStart = ''${limgris}/bin/limgris'';
                 Restart = "on-failure";
               };
             };
+            
           };
       };
     };
