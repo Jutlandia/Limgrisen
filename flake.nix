@@ -111,7 +111,7 @@
               };
             };
 
-            user.users.limgris = {
+            users.users.limgris = {
               isSystemUser = true;
             };
 
