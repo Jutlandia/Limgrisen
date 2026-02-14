@@ -92,7 +92,7 @@
               type = types.str;
             };
             discordTokenFile = mkOption {
-              type = types.str;
+              type = types.path;
             };
             databaseUrl = mkOption {
               type = types.str;
