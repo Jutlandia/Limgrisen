@@ -43,6 +43,7 @@
               ] ++ (if inShell then [
                 # In 'nix develop', provide some developer tools.
                 rustfmt
+                rust-analyzer
                 clippy
               ] else
                 [
@@ -75,7 +76,7 @@
       defaultPackage =
         forAllSystems (system: self.packages.${system}.limgrisen);
       devShell = forAllSystems
-        (system: self.${system}.limgrisen.override { inShell = true; });
+        (system: self.packages.${system}.limgrisen.override { inShell = true; });
       nixosModules.limgrisen = 
         {config, lib, pkgs, ...}:
         with lib;
