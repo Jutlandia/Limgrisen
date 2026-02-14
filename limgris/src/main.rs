@@ -180,7 +180,7 @@ async fn main() -> anyhow::Result<()> {
     let token = match env::var("DISCORD_TOKEN") {
 	Ok(t) => t,
 	Err(_) => {
-	    let token_filepath = env::var("DISCORD_TOKEN_FILE").expect("\"DISCORD_TOKEN\" or \"DISCORD_TOKEN\" needs to be set!");
+	    let token_filepath = env::var("DISCORD_TOKEN_FILE").expect("\"DISCORD_TOKEN\" or \"DISCORD_TOKEN_FILE\" needs to be set!");
 	    let mut token_file = std::fs::File::open(token_filepath)?;
 	    let mut content = String::new();
 	    token_file.read_to_string(&mut content)?;
