@@ -24,24 +24,19 @@ async fn handle_create(
         panic!("Guild ID is None")
     };
 
-    let act_cat = sqlx::query!(
-        r#"SELECT value FROM config WHERE option = 'Current CTFs'"#
-    )
-    .fetch_one(pool)
-    .await
-    .unwrap()
-    .value
-    .unwrap();
+    let act_cat = sqlx::query!(r#"SELECT value FROM config WHERE option = 'Current CTFs'"#)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+        .value
+        .unwrap();
 
     let guild_channel = guild
         .create_channel(
             &ctx.http,
-            CreateChannel::new(name)
-                .category(ChannelId::new(
-                    u64::from_str(&act_cat)
-                        .expect("Can't convert string to u64"),
-                ))
-                ,
+            CreateChannel::new(name).category(ChannelId::new(
+                u64::from_str(&act_cat).expect("Can't convert string to u64"),
+            )),
         )
         .await;
 
@@ -52,7 +47,8 @@ async fn handle_create(
         }
         Err(err) => {
             println!("{:#?}", err);
-            "Error occured during creation of Channel, please check the logs for more details".to_string()
+            "Error occured during creation of Channel, please check the logs for more details"
+                .to_string()
         }
     }
 }
@@ -66,9 +62,7 @@ pub async fn run(
     println!("{:?}", options);
 
     match options[0].name {
-        "create" => {
-            handle_create(pool, &ctx, &guild_id, &options[0].value).await
-        },
+        "create" => handle_create(pool, &ctx, &guild_id, &options[0].value).await,
         _ => "Not implemented".to_string(),
     }
 }
@@ -76,17 +70,15 @@ pub async fn run(
 pub fn register() -> CreateCommand {
     CreateCommand::new("ctf")
         .description("Command for managing CTF Competitions")
-        .set_options(vec![
-            CreateCommandOption::new(
-                CommandOptionType::SubCommand,
-                "create",
-                "Used to create a CTF",
-            )
-            .set_sub_options(vec![CreateCommandOption::new(
-                CommandOptionType::String,
-                "name",
-                "Name of CTF to be created",
-            )
-            .required(true)]),
-        ])
+        .set_options(vec![CreateCommandOption::new(
+            CommandOptionType::SubCommand,
+            "create",
+            "Used to create a CTF",
+        )
+        .set_sub_options(vec![CreateCommandOption::new(
+            CommandOptionType::String,
+            "name",
+            "Name of CTF to be created",
+        )
+        .required(true)])])
 }

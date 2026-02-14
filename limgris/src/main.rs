@@ -13,24 +13,18 @@ use serenity::prelude::*;
 mod lib;
 use crate::lib::types::{Category, Challenge, Ctf};
 
-use sqlx::{
-    migrate::MigrateDatabase,
-    Sqlite,
-    SqlitePool,
-    Pool,
-    Database
-};
+use sqlx::{migrate::MigrateDatabase, Database, Pool, Sqlite, SqlitePool};
 
 use std::collections::HashMap;
 use std::env;
 use std::io::Read;
 
 struct Handler {
-    pool: SqlitePool
+    pool: SqlitePool,
 }
 
 #[async_trait]
-impl EventHandler for Handler{
+impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::Command(command) = interaction {
             println!("Received command interaction: {command:#?}");
@@ -46,25 +40,19 @@ impl EventHandler for Handler{
                     )
                     .await,
                 ),
-                "challenge" => {
-                    Some(commands::challenge::run(&self.pool, &ctx, &command).await)
-                },
-                "archive" => {  // Add this case
+                "challenge" => Some(commands::challenge::run(&self.pool, &ctx, &command).await),
+                "archive" => {
+                    // Add this case
                     Some(commands::archive::run(&self.pool, &ctx, &command).await)
-                },
-                "export" => {
-                    Some(commands::export::run(&self.pool, &ctx, &command).await)
                 }
+                "export" => Some(commands::export::run(&self.pool, &ctx, &command).await),
                 _ => Some("not implemented :(".to_string()),
             };
 
             if let Some(content) = content {
-                let data =
-                    CreateInteractionResponseMessage::new().content(content);
+                let data = CreateInteractionResponseMessage::new().content(content);
                 let builder = CreateInteractionResponse::Message(data);
-                if let Err(why) =
-                    command.create_response(&ctx.http, builder).await
-                {
+                if let Err(why) = command.create_response(&ctx.http, builder).await {
                     println!("Cannot respond to slash command: {why}");
                 }
             }
@@ -81,8 +69,7 @@ impl EventHandler for Handler{
         );
 
         // TODO: do better configuration
-        let mut channel_cat_map: HashMap<String, Option<ChannelId>> =
-            HashMap::new();
+        let mut channel_cat_map: HashMap<String, Option<ChannelId>> = HashMap::new();
         channel_cat_map.insert("Current CTFs".to_string(), None);
         channel_cat_map.insert("Active Challenges".to_string(), None);
         channel_cat_map.insert("Completed Challenges".to_string(), None);
@@ -97,10 +84,7 @@ impl EventHandler for Handler{
 
             for (channel_id, channel_info) in guild_categories {
                 if channel_cat_map.contains_key(&channel_info.name) {
-                    channel_cat_map.insert(
-                        channel_info.name.clone(),
-                        Some(channel_id.clone()),
-                    );
+                    channel_cat_map.insert(channel_info.name.clone(), Some(channel_id.clone()));
                 }
             }
         };
@@ -112,15 +96,14 @@ impl EventHandler for Handler{
                     let res = guild_id
                         .create_channel(
                             &ctx.http,
-                            CreateChannel::new(name)
-                                .kind(ChannelType::Category),
+                            CreateChannel::new(name).kind(ChannelType::Category),
                         )
                         .await;
                     match res {
                         Ok(cat) => {
                             println!("Created category: {}", name);
                             println!("{:?}", cat)
-                        },
+                        }
                         Err(err) => {
                             println!("Error creating: {} - {:?}", name, err)
                         }
@@ -174,32 +157,30 @@ INSERT OR REPLACE INTO config (option, value) VALUES (?1, ?2)
     }
 }
 
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let token = match env::var("DISCORD_TOKEN") {
-	Ok(t) => t,
-	Err(_) => {
-	    let token_filepath = env::var("DISCORD_TOKEN_FILE").expect("\"DISCORD_TOKEN\" or \"DISCORD_TOKEN_FILE\" needs to be set!");
-	    let mut token_file = std::fs::File::open(token_filepath)?;
-	    let mut content = String::new();
-	    token_file.read_to_string(&mut content)?;
-	    content
-	},
+        Ok(t) => t,
+        Err(_) => {
+            let token_filepath = env::var("DISCORD_TOKEN_FILE")
+                .expect("\"DISCORD_TOKEN\" or \"DISCORD_TOKEN_FILE\" needs to be set!");
+            let mut token_file = std::fs::File::open(token_filepath)?;
+            let mut content = String::new();
+            token_file.read_to_string(&mut content)?;
+            content
+        }
     };
 
-    let db_url: String = env::var("DATABASE_URL")
-        .expect("Expected \"DATABASE_URL\" in environment");
+    let db_url: String =
+        env::var("DATABASE_URL").expect("Expected \"DATABASE_URL\" in environment");
 
-
-    if !Sqlite::database_exists(&db_url).await.unwrap_or(false){
+    if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
         println!("Creating dabate {}", db_url);
         match Sqlite::create_database(&db_url).await {
             Ok(_) => println!("DB Created"),
-            Err(error) => panic!("error: {}", error)
+            Err(error) => panic!("error: {}", error),
         }
     }
-
 
     let pool = SqlitePool::connect(&db_url)
         .await
@@ -220,11 +201,9 @@ async fn main() -> anyhow::Result<()> {
     }
     println!("migration: {:?}", migration_results);
 
-
-
-    let handler = Handler{pool};
-    let intents = GatewayIntents::MESSAGE_CONTENT;  // This is critical!
-    // Build our client.
+    let handler = Handler { pool };
+    let intents = GatewayIntents::MESSAGE_CONTENT; // This is critical!
+                                                   // Build our client.
     let mut client = Client::builder(token, intents)
         .event_handler(handler)
         .await

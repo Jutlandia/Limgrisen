@@ -3,9 +3,7 @@ pub mod types {
 
     use serenity::model::id::ChannelId;
     use sqlx::encode::IsNull;
-    use sqlx::sqlite::{
-        SqliteArgumentValue, SqlitePoolOptions, SqliteTypeInfo,
-    };
+    use sqlx::sqlite::{SqliteArgumentValue, SqlitePoolOptions, SqliteTypeInfo};
     use sqlx::Type;
     use sqlx::{Encode, Sqlite, SqlitePool};
 
@@ -53,19 +51,14 @@ pub mod types {
             snowflake: &ChannelId,
         ) -> anyhow::Result<Self> {
             let snow_str = snowflake.to_string();
-            Ok(sqlx::query_as!(
-                Ctf,
-                "SELECT * FROM ctfs WHERE snowflake = ?1",
-                snow_str
+            Ok(
+                sqlx::query_as!(Ctf, "SELECT * FROM ctfs WHERE snowflake = ?1", snow_str)
+                    .fetch_one(pool)
+                    .await?,
             )
-            .fetch_one(pool)
-            .await?)
         }
 
-        pub async fn fetch_by_id(
-            pool: &SqlitePool,
-            id: i64,
-        ) -> anyhow::Result<Self> {
+        pub async fn fetch_by_id(pool: &SqlitePool, id: i64) -> anyhow::Result<Self> {
             Ok(sqlx::query_as!(Ctf, "SELECT * FROM ctfs WHERE id = ?1", id)
                 .fetch_one(pool)
                 .await?)
@@ -73,9 +66,7 @@ pub mod types {
 
         pub fn channel_id(&self) -> Option<ChannelId> {
             match &self.snowflake {
-                Some(snowflake) => {
-                    Some(ChannelId::from_str(snowflake.as_str()).expect("BBB"))
-                }
+                Some(snowflake) => Some(ChannelId::from_str(snowflake.as_str()).expect("BBB")),
                 _ => None,
             }
         }
@@ -138,8 +129,7 @@ pub mod types {
             .fetch_one(pool)
             .await?;
 
-            let ctf =
-                Ctf::fetch_by_id(pool, record.ctf_id).await?;
+            let ctf = Ctf::fetch_by_id(pool, record.ctf_id).await?;
 
             Ok(Self {
                 id: Some(record.id),
@@ -153,9 +143,7 @@ pub mod types {
 
         pub fn channel_id(&self) -> Option<ChannelId> {
             match &self.snowflake {
-                Some(snowflake) => {
-                    Some(ChannelId::from_str(snowflake.as_str()).expect("BBB"))
-                }
+                Some(snowflake) => Some(ChannelId::from_str(snowflake.as_str()).expect("BBB")),
                 _ => None,
             }
         }

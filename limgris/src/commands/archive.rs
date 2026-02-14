@@ -1,29 +1,28 @@
 use crate::lib::types::Ctf;
-use serenity::builder::{CreateCommand, CreateChannel, EditChannel,EditInteractionResponse};
+use serenity::all::Permissions;
+use serenity::builder::{CreateChannel, CreateCommand, EditChannel, EditInteractionResponse};
 use serenity::model::application::CommandInteraction;
 use serenity::model::channel::ChannelType;
 use serenity::model::id::{ChannelId, GuildId};
 use serenity::prelude::*;
-use serenity::all::Permissions;
 use sqlx::SqlitePool;
 use std::str::FromStr;
 
-pub async fn run(
-    pool: &SqlitePool,
-    ctx: &Context,
-    command: &CommandInteraction,
-) -> String {
-    
+pub async fn run(pool: &SqlitePool, ctx: &Context, command: &CommandInteraction) -> String {
     if let Err(why) = command.defer(&ctx.http).await {
-          return format!("Failed to defer response: {}", why);
+        return format!("Failed to defer response: {}", why);
     }
 
     let guild_id = match command.guild_id {
         Some(id) => id,
         None => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content("This command can only be used in a server!")
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content("This command can only be used in a server!"),
+                )
+                .await;
             return "".to_string();
         }
     };
@@ -32,15 +31,22 @@ pub async fn run(
     if let Some(member) = &command.member {
         let permissions = member.permissions.unwrap_or(Permissions::empty());
         if !permissions.contains(Permissions::ADMINISTRATOR) {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content("❌ You need Administrator permissions to archive CTFs!")
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content("❌ You need Administrator permissions to archive CTFs!"),
+                )
+                .await;
             return "".to_string();
         }
     } else {
-        let _ = command.edit_response(&ctx.http,
-            EditInteractionResponse::new().content("❌ Could not verify your permissions!")
-        ).await;
+        let _ = command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().content("❌ Could not verify your permissions!"),
+            )
+            .await;
         return "".to_string();
     }
 
@@ -48,18 +54,27 @@ pub async fn run(
     let ctf = match Ctf::fetch_by_snowflake(pool, &command.channel_id).await {
         Ok(ctf) => ctf,
         Err(_) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content("Not a CTF channel. Please run this command from a CTF-related channel.")
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content(
+                        "Not a CTF channel. Please run this command from a CTF-related channel.",
+                    ),
+                )
+                .await;
             return "".to_string();
         }
     };
 
     // Check if already archived (using field, not method)
     if ctf.is_archived == Some(1) {
-        let _ = command.edit_response(&ctx.http,
-            EditInteractionResponse::new().content(&format!("CTF '{}' is already archived!", ctf.name))
-        ).await;
+        let _ = command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new()
+                    .content(&format!("CTF '{}' is already archived!", ctf.name)),
+            )
+            .await;
         return "".to_string();
     }
 
@@ -67,10 +82,14 @@ pub async fn run(
     let guild_channels = match guild_id.channels(&ctx.http).await {
         Ok(channels) => channels,
         Err(e) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("Error getting guild channels: {}", e))
-            ).await;
-            return "".to_string()
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content(&format!("Error getting guild channels: {}", e)),
+                )
+                .await;
+            return "".to_string();
         }
     };
 
@@ -85,10 +104,14 @@ pub async fn run(
     {
         Ok(category) => category,
         Err(e) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("Error creating archive category: {}", e))
-            ).await;
-            return "".to_string()
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content(&format!("Error creating archive category: {}", e)),
+                )
+                .await;
+            return "".to_string();
         }
     };
 
@@ -121,10 +144,14 @@ pub async fn run(
     {
         Ok(_) => {}
         Err(e) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("Error updating database: {}", e))
-            ).await;
-            return "".to_string()
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content(&format!("Error updating database: {}", e)),
+                )
+                .await;
+            return "".to_string();
         }
     }
 
@@ -146,9 +173,12 @@ pub async fn run(
         ctf.name, archive_category_name, moved_channels
     );
 
-    let _ = command.edit_response(&ctx.http,
-        EditInteractionResponse::new().content(&result_message)
-    ).await;
+    let _ = command
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().content(&result_message),
+        )
+        .await;
 
     "".to_string()
 }

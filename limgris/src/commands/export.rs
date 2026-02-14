@@ -1,22 +1,21 @@
 use crate::lib::types::Ctf;
-use serenity::builder::{CreateCommand, EditInteractionResponse, CreateMessage, CreateAttachment, CreateChannel, GetMessages};
+use serenity::builder::{
+    CreateAttachment, CreateChannel, CreateCommand, CreateMessage, EditInteractionResponse,
+    GetMessages,
+};
 use serenity::model::application::CommandInteraction;
 use serenity::model::channel::{ChannelType, Message};
 use serenity::model::id::{ChannelId, GuildId};
 use serenity::prelude::*;
 use sqlx::SqlitePool;
 
-use std::io::Write;
-use chrono::{Utc, Datelike, DateTime};
-use zip::ZipWriter;
-use zip::write::FileOptions;
+use chrono::{DateTime, Datelike, Utc};
 use std::collections::HashMap;
+use std::io::Write;
+use zip::write::FileOptions;
+use zip::ZipWriter;
 
-pub async fn run(
-    pool: &SqlitePool,
-    ctx: &Context,
-    command: &CommandInteraction,
-) -> String {
+pub async fn run(pool: &SqlitePool, ctx: &Context, command: &CommandInteraction) -> String {
     // Defer the response immediately
     if let Err(why) = command.defer(&ctx.http).await {
         return format!("Failed to defer response: {}", why);
@@ -25,9 +24,13 @@ pub async fn run(
     let guild_id = match command.guild_id {
         Some(id) => id,
         None => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content("This command can only be used in a server!")
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content("This command can only be used in a server!"),
+                )
+                .await;
             return "".to_string();
         }
     };
@@ -36,33 +39,51 @@ pub async fn run(
     let ctf = match Ctf::fetch_by_snowflake(pool, &command.channel_id).await {
         Ok(ctf) => ctf,
         Err(_) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content("Not a CTF channel. Please run this command from a CTF-related channel.")
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content(
+                        "Not a CTF channel. Please run this command from a CTF-related channel.",
+                    ),
+                )
+                .await;
             return "".to_string();
         }
     };
 
     // Check if CTF is archived - this command only works on archived CTFs
     if ctf.is_archived != Some(1) {
-        let _ = command.edit_response(&ctx.http,
-            EditInteractionResponse::new().content(&format!("CTF '{}' must be archived first! Use `/archive` command to archive it.", ctf.name))
-        ).await;
+        let _ = command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().content(&format!(
+                    "CTF '{}' must be archived first! Use `/archive` command to archive it.",
+                    ctf.name
+                )),
+            )
+            .await;
         return "".to_string();
     }
 
     // Update status message
-    let _ = command.edit_response(&ctx.http,
-        EditInteractionResponse::new().content("🔄 Starting export process...")
-    ).await;
+    let _ = command
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().content("🔄 Starting export process..."),
+        )
+        .await;
 
     // Get all guild channels
     let guild_channels = match guild_id.channels(&ctx.http).await {
         Ok(channels) => channels,
         Err(e) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("Error getting guild channels: {}", e))
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content(&format!("Error getting guild channels: {}", e)),
+                )
+                .await;
             return "".to_string();
         }
     };
@@ -98,24 +119,40 @@ pub async fn run(
     }
 
     if ctf_channels.is_empty() {
-        let _ = command.edit_response(&ctx.http,
-            EditInteractionResponse::new().content(&format!("No channels found in archive category '{}'. Nothing to export.", archive_category_name))
-        ).await;
+        let _ = command
+            .edit_response(
+                &ctx.http,
+                EditInteractionResponse::new().content(&format!(
+                    "No channels found in archive category '{}'. Nothing to export.",
+                    archive_category_name
+                )),
+            )
+            .await;
         return "".to_string();
     }
 
     // Update status
-    let _ = command.edit_response(&ctx.http,
-        EditInteractionResponse::new().content(&format!("📥 Exporting chat history from {} archived channels...", ctf_channels.len()))
-    ).await;
+    let _ = command
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().content(&format!(
+                "📥 Exporting chat history from {} archived channels...",
+                ctf_channels.len()
+            )),
+        )
+        .await;
 
     // Create ZIP file with chat exports
     let zip_data = match create_ctf_export(&ctx, &ctf_channels, &ctf.name, command).await {
         Ok(data) => data,
         Err(e) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("Error creating export: {}", e))
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content(&format!("Error creating export: {}", e)),
+                )
+                .await;
             return "".to_string();
         }
     };
@@ -127,20 +164,30 @@ pub async fn run(
     let reol_channel = match find_or_create_reol_channel(&ctx, guild_id, &reol_channel_name).await {
         Ok(channel) => channel,
         Err(e) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("Error accessing reol channel: {}", e))
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content(&format!("Error accessing reol channel: {}", e)),
+                )
+                .await;
             return "".to_string();
         }
     };
 
     // Update status
-    let _ = command.edit_response(&ctx.http,
-        EditInteractionResponse::new().content("📚 Uploading export to The Grand Archive...")
-    ).await;
+    let _ = command
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().content("📚 Uploading export to The Grand Archive..."),
+        )
+        .await;
 
     // Create the ZIP attachment
-    let zip_filename = format!("{}_export.zip", ctf.name.replace(" ", "_").replace("/", "_"));
+    let zip_filename = format!(
+        "{}_export.zip",
+        ctf.name.replace(" ", "_").replace("/", "_")
+    );
     let zip_size_mb = zip_data.len() as f64 / (1024.0 * 1024.0); // Calculate size before moving
     let attachment = CreateAttachment::bytes(zip_data, &zip_filename);
 
@@ -151,24 +198,33 @@ pub async fn run(
         • Channels Exported: {}\n\
         • Export Date: {}\n\
         • File Size: {:.2} MB",
-        ctf.name, ctf.name, ctf_channels.len(),
+        ctf.name,
+        ctf.name,
+        ctf_channels.len(),
         Utc::now().format("%Y-%m-%d %H:%M UTC"),
         zip_size_mb
     );
 
-    match reol_channel.send_message(
-        &ctx.http,
-        CreateMessage::new()
-            .content(&archive_message)
-            .add_file(attachment)
-    ).await {
+    match reol_channel
+        .send_message(
+            &ctx.http,
+            CreateMessage::new()
+                .content(&archive_message)
+                .add_file(attachment),
+        )
+        .await
+    {
         Ok(_) => {
             println!("Successfully uploaded CTF export for {}", ctf.name);
         }
         Err(e) => {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("Error uploading export: {}", e))
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content(&format!("Error uploading export: {}", e)),
+                )
+                .await;
             return "".to_string();
         }
     }
@@ -197,9 +253,12 @@ pub async fn run(
         current_year
     );
 
-    let _ = command.edit_response(&ctx.http,
-        EditInteractionResponse::new().content(&result_message)
-    ).await;
+    let _ = command
+        .edit_response(
+            &ctx.http,
+            EditInteractionResponse::new().content(&result_message),
+        )
+        .await;
 
     "".to_string()
 }
@@ -258,27 +317,43 @@ async fn create_ctf_export(
         // Export each channel
         for (channel_id, channel) in ctf_channels {
             processed_channels += 1;
-            println!("Exporting channel: {} ({}/{})", channel.name, processed_channels, total_channels);
+            println!(
+                "Exporting channel: {} ({}/{})",
+                channel.name, processed_channels, total_channels
+            );
 
             // Update progress message
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content(&format!("📥 Exporting {} ({}/{}) and downloading attachments...", channel.name, processed_channels, total_channels))
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content(&format!(
+                        "📥 Exporting {} ({}/{}) and downloading attachments...",
+                        channel.name, processed_channels, total_channels
+                    )),
+                )
+                .await;
 
             // Get messages from channel (limited to recent messages due to API limits)
-            let messages = match channel_id.messages(&ctx.http, serenity::builder::GetMessages::new().limit(255)).await {
+            let messages = match channel_id
+                .messages(&ctx.http, serenity::builder::GetMessages::new().limit(255))
+                .await
+            {
                 Ok(msgs) => {
                     println!("Fetched {} messages from {}", msgs.len(), channel.name);
                     // Debug: Check first few messages for attachments
                     for (idx, msg) in msgs.iter().take(5).enumerate() {
-                        println!("  Message {}: {} attachments, content length: {}", 
-                                 idx, msg.attachments.len(), msg.content.len());
+                        println!(
+                            "  Message {}: {} attachments, content length: {}",
+                            idx,
+                            msg.attachments.len(),
+                            msg.content.len()
+                        );
                         for att in &msg.attachments {
                             println!("    - Attachment: {} ({})", att.filename, att.url);
                         }
                     }
                     msgs
-                },
+                }
                 Err(e) => {
                     println!("Error getting messages from {}: {}", channel.name, e);
                     // Create empty channel file with error note
@@ -286,7 +361,10 @@ async fn create_ctf_export(
                         "{{\"error\": \"Failed to export messages from {}: {}\", \"messageCount\": 0}}",
                         channel.name, e
                     );
-                    let filename = format!("{}_ERROR.json", channel.name.replace("/", "_").replace("\\", "_"));
+                    let filename = format!(
+                        "{}_ERROR.json",
+                        channel.name.replace("/", "_").replace("\\", "_")
+                    );
                     zip.start_file(&filename, options)?;
                     zip.write_all(error_content.as_bytes())?;
                     continue;
@@ -294,25 +372,39 @@ async fn create_ctf_export(
             };
 
             // Download attachments and avatars from this channel's messages
-            println!("Processing {} messages for attachments and avatars...", messages.len());
+            println!(
+                "Processing {} messages for attachments and avatars...",
+                messages.len()
+            );
             for (msg_idx, message) in messages.iter().enumerate() {
-                println!("Message {}: ID={}, attachments={}, content_len={}", 
-                         msg_idx, message.id, message.attachments.len(), message.content.len());
-                
+                println!(
+                    "Message {}: ID={}, attachments={}, content_len={}",
+                    msg_idx,
+                    message.id,
+                    message.attachments.len(),
+                    message.content.len()
+                );
+
                 // Download user avatar
                 if let Some(avatar_url) = message.author.avatar_url() {
                     let avatar_key = format!("{}.png", message.author.id);
-                    
+
                     if !downloaded_avatars.contains_key(&avatar_key) {
-                        println!("  Downloading avatar for: {} ({})", message.author.name, avatar_url);
-                        
+                        println!(
+                            "  Downloading avatar for: {} ({})",
+                            message.author.name, avatar_url
+                        );
+
                         match download_attachment(&avatar_url).await {
                             Ok(data) => {
                                 println!("    ✓ Downloaded avatar: {} bytes", data.len());
                                 downloaded_avatars.insert(avatar_key, data);
                             }
                             Err(e) => {
-                                println!("    ✗ Failed to download avatar for {}: {}", message.author.name, e);
+                                println!(
+                                    "    ✗ Failed to download avatar for {}: {}",
+                                    message.author.name, e
+                                );
                             }
                         }
                     }
@@ -320,11 +412,17 @@ async fn create_ctf_export(
 
                 // Download message attachments
                 if !message.attachments.is_empty() {
-                    println!("  Found {} attachments in this message", message.attachments.len());
+                    println!(
+                        "  Found {} attachments in this message",
+                        message.attachments.len()
+                    );
                 }
                 for attachment in &message.attachments {
                     let file_key = format!("{}_{}", attachment.id, &attachment.filename);
-                    println!("    Processing attachment: {} -> {}", attachment.filename, file_key);
+                    println!(
+                        "    Processing attachment: {} -> {}",
+                        attachment.filename, file_key
+                    );
 
                     if !downloaded_files.contains_key(&file_key) {
                         println!("      Downloading from: {}", attachment.url);
@@ -335,39 +433,57 @@ async fn create_ctf_export(
                                 downloaded_files.insert(file_key, data);
                             }
                             Err(e) => {
-                                println!("      ✗ Failed to download {}: {}", attachment.filename, e);
+                                println!(
+                                    "      ✗ Failed to download {}: {}",
+                                    attachment.filename, e
+                                );
                             }
                         }
                     } else {
                         println!("      Already downloaded");
                     }
                 }
-                
+
                 // Download avatars for mentioned users
                 for mentioned_user in &message.mentions {
                     if let Some(avatar_url) = mentioned_user.avatar_url() {
                         let avatar_key = format!("{}.png", mentioned_user.id);
-                        
+
                         if !downloaded_avatars.contains_key(&avatar_key) {
-                            println!("  Downloading avatar for mentioned user: {}", mentioned_user.name);
-                            
+                            println!(
+                                "  Downloading avatar for mentioned user: {}",
+                                mentioned_user.name
+                            );
+
                             match download_attachment(&avatar_url).await {
                                 Ok(data) => {
                                     downloaded_avatars.insert(avatar_key, data);
                                 }
                                 Err(e) => {
-                                    println!("    ✗ Failed to download avatar for {}: {}", mentioned_user.name, e);
+                                    println!(
+                                        "    ✗ Failed to download avatar for {}: {}",
+                                        mentioned_user.name, e
+                                    );
                                 }
                             }
                         }
                     }
                 }
             }
-            
-            println!("Finished processing messages. Total attachments to save: {}", downloaded_files.len());
+
+            println!(
+                "Finished processing messages. Total attachments to save: {}",
+                downloaded_files.len()
+            );
 
             // Convert to JSON format compatible with DiscordChatExporter
-            let export_data = create_discord_chat_export(&messages, channel, ctf_name, &downloaded_files, &downloaded_avatars);
+            let export_data = create_discord_chat_export(
+                &messages,
+                channel,
+                ctf_name,
+                &downloaded_files,
+                &downloaded_avatars,
+            );
             let json_content = serde_json::to_string_pretty(&export_data)?;
 
             // Add to ZIP
@@ -378,9 +494,13 @@ async fn create_ctf_export(
 
         // Add all downloaded attachments to assets folder
         if !downloaded_files.is_empty() {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content("📎 Adding downloaded attachments to archive...")
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new()
+                        .content("📎 Adding downloaded attachments to archive..."),
+                )
+                .await;
 
             for (filename, data) in downloaded_files {
                 let asset_path = format!("assets/{}", filename);
@@ -391,9 +511,12 @@ async fn create_ctf_export(
 
         // Add all downloaded avatars to avatars folder
         if !downloaded_avatars.is_empty() {
-            let _ = command.edit_response(&ctx.http,
-                EditInteractionResponse::new().content("👤 Adding user avatars to archive...")
-            ).await;
+            let _ = command
+                .edit_response(
+                    &ctx.http,
+                    EditInteractionResponse::new().content("👤 Adding user avatars to archive..."),
+                )
+                .await;
 
             for (filename, data) in downloaded_avatars {
                 let avatar_path = format!("avatars/{}", filename);
@@ -409,7 +532,9 @@ async fn create_ctf_export(
 }
 
 /// Download an attachment from Discord CDN
-async fn download_attachment(url: &str) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
+async fn download_attachment(
+    url: &str,
+) -> Result<Vec<u8>, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::new();
     let response = client.get(url).send().await?;
 
@@ -430,7 +555,8 @@ fn create_discord_chat_export(
     downloaded_avatars: &HashMap<String, Vec<u8>>,
 ) -> serde_json::Value {
     let mut export_messages = Vec::new();
-    for msg in messages.iter().rev() { // Reverse to get chronological order
+    for msg in messages.iter().rev() {
+        // Reverse to get chronological order
         // Get local avatar path if available
         let avatar_key = format!("{}.png", msg.author.id);
         let author_avatar = if downloaded_avatars.contains_key(&avatar_key) {
