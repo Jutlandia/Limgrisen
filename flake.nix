@@ -107,13 +107,16 @@
                 d = {
                   user = "limgris";
                   mode = "0755";
+                  group = "limgris";
                 };
               };
             };
 
             users.users.limgris = {
               isSystemUser = true;
+              group = "limgris";
             };
+            users.groups.limgris = {};
 
             systemd.services.limgrisen = {
               description = "Jutlandia Limgrisen service";
