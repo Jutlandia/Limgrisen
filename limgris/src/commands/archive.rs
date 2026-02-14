@@ -4,6 +4,7 @@ use serenity::model::application::CommandInteraction;
 use serenity::model::channel::ChannelType;
 use serenity::model::id::{ChannelId, GuildId};
 use serenity::prelude::*;
+use serenity::all::Permissions;
 use sqlx::SqlitePool;
 use std::str::FromStr;
 

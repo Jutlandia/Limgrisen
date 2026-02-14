@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE ctfs SET is_archived = 1 WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "069c257eab0fe8c2ce71d105f46e177988eb54c57a2da4b7c08b164d046c8ef1"
+}

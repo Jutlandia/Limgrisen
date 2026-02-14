@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE challenges SET is_archived = 1 WHERE ctf_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "4fd78025b2909476608b0ed26693a917b53e5c48782a958d57dcea3c3b2fbd6e"
+}
